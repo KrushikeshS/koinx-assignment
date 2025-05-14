@@ -4,6 +4,7 @@ import dotenv from "dotenv";
 import statsRoutes from "./routes/stats.js";
 import deviationRoutes from "./routes/deviation.js";
 import {storeCryptoStats} from "./services/cryptoService.js";
+import {startNatsListener} from "./nats/subscriber.js";
 
 dotenv.config();
 const app = express();
@@ -21,7 +22,7 @@ app.get("/", (req, res) => {
   });
 });
 
-// Manual trigger endpoint (can be useful for testing/debugging in production)
+// Manual trigger endpoint (useful for testing/debugging)
 app.post("/trigger-collection", async (req, res) => {
   try {
     await storeCryptoStats();
@@ -42,10 +43,13 @@ app.post("/trigger-collection", async (req, res) => {
 const PORT = process.env.PORT || 3000;
 const MONGO_URI = process.env.MONGO_URI;
 
+// Connect to MongoDB and start server
 mongoose
   .connect(MONGO_URI)
   .then(() => {
     console.log("Connected to MongoDB");
+
+    // Start HTTP server
     app.listen(PORT, () => {
       console.log(`API Server running on port ${PORT}`);
       console.log(`Health check: http://localhost:${PORT}/`);
@@ -56,11 +60,21 @@ mongoose
         `Deviation endpoint: http://localhost:${PORT}/deviation?coin=bitcoin`
       );
     });
+
+    // Start NATS listener
+    startNatsListener().catch((err) => {
+      console.error("Failed to start NATS listener:", err);
+    });
   })
   .catch((err) => console.error("MongoDB connection error:", err));
 
-// Handle unhandled promise rejections
+// Error Handling
 process.on("unhandledRejection", (err) => {
   console.error("Unhandled Promise Rejection:", err);
-  // Don't exit the process in production, just log the error
+});
+
+process.on("uncaughtException", (err) => {
+  console.error("Uncaught Exception:", err);
+  // In production, you might want to gracefully shutdown
+  // process.exit(1);
 });
