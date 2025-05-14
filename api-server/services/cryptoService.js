@@ -1,6 +1,5 @@
-// services/cryptoService.js
 import axios from "axios";
-import Crypto from "../models/crypto.js";
+import CryptoStat from "../models/CryptoStat.js"; // ✅ USE THIS MODEL
 
 export async function storeCryptoStats() {
   try {
@@ -15,22 +14,21 @@ export async function storeCryptoStats() {
     );
 
     for (const coin of data) {
-      await Crypto.findOneAndUpdate(
-        {id: coin.id},
-        {
-          id: coin.id,
-          symbol: coin.symbol,
-          name: coin.name,
-          image: coin.image,
-          current_price: coin.current_price,
-          market_cap: coin.market_cap,
-          price_change_percentage_24h: coin.price_change_percentage_24h,
-        },
-        {upsert: true, new: true}
-      );
+      // ✅ INSERT a new stat instead of updating
+      await CryptoStat.create({
+        id: coin.id,
+        symbol: coin.symbol,
+        name: coin.name,
+        image: coin.image,
+        current_price: coin.current_price,
+        market_cap: coin.market_cap,
+        price_change_percentage_24h: coin.price_change_percentage_24h,
+      });
     }
 
-    console.log("storeCryptoStats: Crypto stats stored successfully.");
+    console.log(
+      "storeCryptoStats: Crypto stats saved in CryptoStat collection."
+    );
   } catch (err) {
     console.error("storeCryptoStats error:", err.message);
   }
